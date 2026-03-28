@@ -43,12 +43,16 @@ class PulseForgeApp:
         # Reset engine state for new track
         self.engine.reset()
 
-        # Start audio playback
+        # Pre-load the audio data for FFT (before starting playback mixer)
+        self.producer.file_path = file_path
+        self.producer._load()
+
+        # Now start audio playback (initializes mixer for output)
         self.audio.load(file_path)
 
-        # Launch producer in background
+        # Launch producer in background (skip _load since we already did it)
         self._producer_task = asyncio.create_task(
-            self.producer.load_and_run(file_path)
+            self.producer._run_frames(file_path)
         )
 
     def _handle_pause(self, paused: bool):

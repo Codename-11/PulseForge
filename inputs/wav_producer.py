@@ -39,14 +39,23 @@ class AudioProducer:
         self.samples = self._to_mono_float(data)
 
     def _load_mp3(self):
-        """Load MP3 via pygame-ce's SDL_mixer decoder."""
+        """Load MP3 via pygame-ce's SDL_mixer decoder.
+
+        Uses a separate temporary mixer init to decode the MP3 into a numpy
+        array without interfering with the AudioConsumer's playback mixer.
+        """
         import pygame
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+        # Only init a temporary mixer if one isn't already running
+        mixer_was_init = pygame.mixer.get_init() is not None
+        if not mixer_was_init:
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
         sound = pygame.mixer.Sound(self.file_path)
         data = pygame.sndarray.array(sound)
         self.sample_rate = 44100
         self.samples = self._to_mono_float(data)
-        pygame.mixer.quit()
+        # Only quit if we were the ones who initialized it
+        if not mixer_was_init:
+            pygame.mixer.quit()
 
     @staticmethod
     def _to_mono_float(data: np.ndarray) -> np.ndarray:
@@ -90,7 +99,10 @@ class AudioProducer:
         """Load a new file and stream SignalFrames at playback rate."""
         self.file_path = file_path
         self._load()
+        await self._run_frames(file_path)
 
+    async def _run_frames(self, file_path: str):
+        """Stream SignalFrames from already-loaded samples."""
         self.engine.playing = True
         self.engine.current_file = file_path
 
