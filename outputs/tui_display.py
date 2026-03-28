@@ -596,6 +596,9 @@ class VisualizerScreen(Screen):
 
     # ── Actions ──
 
+    def action_quit(self):
+        self.app.exit()
+
     def action_open_file(self):
         self.app.push_screen(FileBrowserScreen())
 
