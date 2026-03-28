@@ -475,28 +475,30 @@ class VisualizerScreen(Screen):
         self._w_status.update(f"STATUS: {status}")
         self._update_header_filename()
 
-    def _switch_viz(self, index: int):
+    async def _switch_viz(self, index: int):
         """Switch to visualization mode by index (0-5)."""
+        if index == self._viz_index:
+            return
         _, name, viz_class = VIZ_MODES[index]
-        # Remove old viz
+        # Remove old viz — must await since remove() is async in Textual
         old = self.query_one("#active-viz")
-        old.remove()
+        await old.remove()
         # Mount new viz
         center = self.query_one("#center-panel", Vertical)
         new_viz = viz_class(id="active-viz")
-        center.mount(new_viz, before=self.query_one("#center-message", Label))
+        await center.mount(new_viz, before=self.query_one("#center-message", Label))
         self._active_viz = new_viz
         # Update header
         if self._w_header:
             self._w_header.set_view(f"VISUALIZER — {name.upper()}")
         self._viz_index = index
 
-    def action_viz_1(self): self._switch_viz(0)
-    def action_viz_2(self): self._switch_viz(1)
-    def action_viz_3(self): self._switch_viz(2)
-    def action_viz_4(self): self._switch_viz(3)
-    def action_viz_5(self): self._switch_viz(4)
-    def action_viz_6(self): self._switch_viz(5)
+    async def action_viz_1(self): await self._switch_viz(0)
+    async def action_viz_2(self): await self._switch_viz(1)
+    async def action_viz_3(self): await self._switch_viz(2)
+    async def action_viz_4(self): await self._switch_viz(3)
+    async def action_viz_5(self): await self._switch_viz(4)
+    async def action_viz_6(self): await self._switch_viz(5)
 
     async def update_ui(self, frame: SignalFrame):
         """Subscriber callback — stores data, actual render happens on timer."""
