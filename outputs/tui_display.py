@@ -155,7 +155,8 @@ class PulseForgeTUI(App):
                 progress=int(progress * 100)
             )
 
-            self.query_one("#status-label", Label).update("STATUS: ACTIVE")
+            status = "COMPLETE" if not self.engine.running else "ACTIVE"
+            self.query_one("#status-label", Label).update(f"STATUS: {status}")
         except Exception:
             pass
 
@@ -163,3 +164,4 @@ class PulseForgeTUI(App):
         self.engine.add_subscriber(self.update_ui)
         self._start_time = time.monotonic()
         self.title = "PULSEFORGE ENGINE v1.0"
+        self.sub_title = "Press Q to quit"

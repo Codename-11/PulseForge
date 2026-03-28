@@ -22,12 +22,19 @@ async def main_loop(file_path: str):
     # 5. Register audio consumer as subscriber
     engine.add_subscriber(audio.on_frame)
 
+    async def run_producer():
+        """Run the producer, then signal the engine to stop."""
+        await producer.run()
+        # Wait for queue to drain before stopping
+        await engine.queue.join()
+        engine.stop()
+
     # 6. Start playback and run all tasks concurrently
     audio.start_playback()
     try:
         await asyncio.gather(
             engine.broadcast(),
-            producer.run(),
+            run_producer(),
             tui.run_async(),
         )
     finally:

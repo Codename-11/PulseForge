@@ -105,15 +105,15 @@ Latency Goal: <20ms from audio analysis to motor movement.
 
 6. Development Roadmap
 
-Phase 1: The Virtual Foundry (Current)
+Phase 1: The Virtual Foundry (Complete)
 
-[ ] Implement PulseForgeEngine async bus.
+[x] Implement PulseForgeEngine async bus.
 
-[ ] Build WavProducer with basic FFT logic.
+[x] Build AudioProducer with FFT logic (WAV + MP3).
 
-[ ] Create Textual dashboard with frequency bars and telemetry.
+[x] Create Textual dashboard with frequency bars, telemetry, and monitors.
 
-[ ] Implement local audio playback synced to TUI.
+[x] Implement local audio playback synced to TUI.
 
 Phase 2: The Physical Foundry
 
