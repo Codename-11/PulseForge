@@ -25,13 +25,22 @@ class AudioConsumer:
 
     def load(self, file_path: str):
         """Stop any current playback, then load and play a new file."""
+        self.preload(file_path)
+        self.play()
+
+    def preload(self, file_path: str):
+        """Load audio into mixer without starting playback."""
         self._ensure_mixer()
         if self._mixer_ready() and pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
         self.file_path = file_path
         self.paused = False
         pygame.mixer.music.load(self.file_path)
-        pygame.mixer.music.play()
+
+    def play(self):
+        """Start playback of the preloaded audio."""
+        if self._mixer_ready():
+            pygame.mixer.music.play()
 
     def pause(self):
         """Pause playback."""

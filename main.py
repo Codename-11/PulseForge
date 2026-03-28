@@ -49,13 +49,32 @@ class PulseForgeApp:
         self.producer.file_path = file_path
         self.producer._load()
 
-        # Now start audio playback (initializes mixer for output)
-        self.audio.load(file_path)
+        # Pre-load audio into mixer but don't play yet
+        self.audio.preload(file_path)
 
-        # Launch producer in background (skip _load since we already did it)
+        # Launch producer — it will signal us to start audio on first frame
         self._producer_task = asyncio.create_task(
-            self.producer._run_frames(file_path)
+            self._produce_with_sync(file_path)
         )
+
+    async def _produce_with_sync(self, file_path: str):
+        """Run the producer, starting audio playback on the first frame."""
+        first_frame = True
+
+        original_push = self.engine.push_frame
+
+        async def synced_push(frame):
+            nonlocal first_frame
+            if first_frame:
+                first_frame = False
+                self.audio.play()
+            await original_push(frame)
+
+        self.engine.push_frame = synced_push
+        try:
+            await self.producer._run_frames(file_path)
+        finally:
+            self.engine.push_frame = original_push
 
     def _handle_pause(self, paused: bool):
         """Sync audio playback with TUI pause state."""
