@@ -1,6 +1,7 @@
 $amber: #FFB000;
 $amber-dim: #8A6200;
 $amber-dark: #221100;
+$amber-bright: #FFCC00;
 $bg: #0A0A0A;
 
 Screen {
@@ -8,53 +9,122 @@ Screen {
     color: $amber;
 }
 
-#main-container {
-    layout: grid;
-    grid-size: 3 1;
-    grid-columns: 1fr 3fr 1fr;
+/* ── Custom Header Bar ── */
+#header-bar {
+    dock: top;
+    height: 1;
+    background: #111111;
+    color: $amber;
+    text-style: bold;
+    padding: 0 1;
 }
 
+/* ── Main three-column layout ── */
+#main-container {
+    layout: horizontal;
+    height: 1fr;
+}
+
+/* ── Side panels (left + right) ── */
 .side-panel {
     border: round $amber-dark;
     padding: 1;
-    margin: 1;
+    margin: 0;
     background: #111111;
 }
 
 .panel-title {
     text-style: bold;
+    color: $amber-dim;
     margin-bottom: 1;
 }
 
-#visualizer-grid {
-    grid-size: 8 1;
-    padding: 1;
-    border: round $amber-dark;
-    height: 100%;
+/* ── Left panel ── */
+#left-panel {
+    width: 24;
+    min-width: 20;
 }
 
-FrequencyBar {
-    width: 100%;
-    height: 100%;
-    content-align: center bottom;
-}
-
-MonitorLine {
-    height: 2;
-    margin-bottom: 1;
-}
-
-ProgressBar {
-    margin-top: 1;
-    margin-bottom: 1;
-}
-
-ProgressBar Bar {
-    color: $amber;
-    background: $amber-dark;
+#peak-label, #rms-label, #flow-label {
+    margin-bottom: 0;
 }
 
 #status-label {
     margin-top: 1;
     text-style: bold;
+}
+
+/* ── Center panel ── */
+#center-panel {
+    width: 1fr;
+    border: round $amber-dark;
+    margin: 0;
+    padding: 0 1;
+    background: #0D0D0D;
+}
+
+#viz-title {
+    text-align: center;
+    dock: top;
+}
+
+#center-message {
+    text-align: center;
+    margin-top: 4;
+    color: $amber-dim;
+    text-style: italic;
+    width: 100%;
+}
+
+/* ── Visualizer grid: 8 bars side by side ── */
+#visualizer-grid {
+    height: 1fr;
+    align-horizontal: center;
+    padding: 0 1;
+}
+
+FrequencyBar {
+    width: 1fr;
+    height: 100%;
+    content-align: center bottom;
+    margin: 0 1;
+    color: $amber;
+}
+
+/* ── Right panel ── */
+#right-panel {
+    width: 28;
+    min-width: 24;
+}
+
+MonitorLine {
+    height: 2;
+    margin-bottom: 0;
+    color: $amber;
+}
+
+/* ── Bottom strip ── */
+#bottom-strip {
+    dock: bottom;
+    height: 1;
+    background: #111111;
+    color: $amber;
+    text-style: bold;
+    padding: 0 1;
+    border-top: solid $amber-dark;
+}
+
+/* ── File input ── */
+#file-input {
+    dock: bottom;
+    margin: 0 2;
+    background: #111111;
+    color: $amber;
+    border: round $amber;
+}
+
+/* ── Footer overrides ── */
+Footer {
+    background: #111111;
+    color: $amber-dim;
 }

@@ -16,9 +16,9 @@ class AudioProducer:
     WINDOW_MS = 33  # ~30 FPS
     FREQ_EDGES = [20, 60, 160, 400, 1000, 2500, 6000, 12000, 20000]  # 8 bands
 
-    def __init__(self, engine, file_path: str):
+    def __init__(self, engine):
         self.engine = engine
-        self.file_path = file_path
+        self.file_path: str = ""
         self.sample_rate = 0
         self.samples = np.array([])
 
@@ -86,32 +86,39 @@ class AudioProducer:
 
         return bands
 
-    async def run(self):
-        """Stream SignalFrames at playback rate."""
+    async def load_and_run(self, file_path: str):
+        """Load a new file and stream SignalFrames at playback rate."""
+        self.file_path = file_path
         self._load()
+
+        self.engine.playing = True
+        self.engine.current_file = file_path
 
         window_samples = int(self.sample_rate * self.WINDOW_MS / 1000)
         total_samples = len(self.samples)
         offset = 0
         timestamp = 0.0
 
-        while offset + window_samples <= total_samples:
-            chunk = self.samples[offset : offset + window_samples]
-            bins = self._fft_bands(chunk)
+        try:
+            while offset + window_samples <= total_samples:
+                chunk = self.samples[offset : offset + window_samples]
+                bins = self._fft_bands(chunk)
 
-            frame = SignalFrame(
-                timestamp=timestamp,
-                peak_amplitude=max(bins),
-                fft_bins=bins,
-                metadata={
-                    "file": Path(self.file_path).name,
-                    "sample_rate": self.sample_rate,
-                    "progress": offset / total_samples,
-                },
-            )
+                frame = SignalFrame(
+                    timestamp=timestamp,
+                    peak_amplitude=max(bins),
+                    fft_bins=bins,
+                    metadata={
+                        "file": Path(self.file_path).name,
+                        "sample_rate": self.sample_rate,
+                        "progress": offset / total_samples,
+                    },
+                )
 
-            await self.engine.push_frame(frame)
+                await self.engine.push_frame(frame)
 
-            await asyncio.sleep(self.WINDOW_MS / 1000)
-            offset += window_samples
-            timestamp += self.WINDOW_MS / 1000
+                await asyncio.sleep(self.WINDOW_MS / 1000)
+                offset += window_samples
+                timestamp += self.WINDOW_MS / 1000
+        finally:
+            self.engine.playing = False

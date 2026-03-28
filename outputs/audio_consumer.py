@@ -4,21 +4,46 @@ from core.models import SignalFrame
 
 class AudioConsumer:
     """
-    Plays the audio file via pygame.mixer, synchronized with
-    the engine's frame stream. Registered as an engine subscriber
-    for future volume/effect control based on frame data.
+    Plays audio via pygame.mixer, synchronized with the engine's
+    frame stream. Supports loading new files without restarting.
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    def __init__(self):
+        self.file_path: str = ""
+        self.paused: bool = False
         self._initialized = False
 
+    def _ensure_mixer(self):
+        """Initialize the mixer once if not already initialized."""
+        if not self._initialized:
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+            self._initialized = True
+
+    def load(self, file_path: str):
+        """Stop any current playback, then load and play a new file."""
+        if self._initialized and pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()
+        self.file_path = file_path
+        self.paused = False
+        self.start_playback()
+
     def start_playback(self):
-        """Initialize pygame mixer and begin audio playback."""
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+        """Initialize pygame mixer (if needed) and begin audio playback."""
+        self._ensure_mixer()
         pygame.mixer.music.load(self.file_path)
         pygame.mixer.music.play()
-        self._initialized = True
+
+    def pause(self):
+        """Pause playback."""
+        if self._initialized and not self.paused:
+            pygame.mixer.music.pause()
+            self.paused = True
+
+    def resume(self):
+        """Resume playback."""
+        if self._initialized and self.paused:
+            pygame.mixer.music.unpause()
+            self.paused = False
 
     def stop(self):
         """Stop playback and clean up."""
@@ -26,6 +51,7 @@ class AudioConsumer:
             pygame.mixer.music.stop()
             pygame.mixer.quit()
             self._initialized = False
+            self.paused = False
 
     def is_playing(self) -> bool:
         """Check if audio is still playing."""

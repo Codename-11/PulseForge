@@ -10,11 +10,26 @@ class PulseForgeEngine:
         self.subscribers: List[Callable] = []
         self.queue = asyncio.Queue(maxsize=20)
         self.running = True
+        self.playing: bool = False
+        self.current_file: str = ""
         self._prev_bins: List[float] = []
 
     def add_subscriber(self, callback: Callable):
         """Registers an output module (TUI, Audio, Hardware)."""
         self.subscribers.append(callback)
+
+    def reset(self):
+        """Clear state for a new track without tearing down the engine."""
+        # Drain the queue
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+                self.queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+        self._prev_bins = []
+        self.running = True
+        self.playing = False
 
     def _smooth(self, frame: SignalFrame) -> SignalFrame:
         """Apply exponential moving average to FFT bins for smoother visuals."""
@@ -34,8 +49,8 @@ class PulseForgeEngine:
         return frame
 
     async def broadcast(self):
-        """Main loop pumping frames to all subscribers concurrently."""
-        while self.running:
+        """Main loop pumping frames to all subscribers concurrently. Runs forever."""
+        while True:
             try:
                 frame = await asyncio.wait_for(self.queue.get(), timeout=0.5)
             except asyncio.TimeoutError:

@@ -6,9 +6,11 @@ from inputs.wav_producer import AudioProducer
 
 @pytest.fixture
 def wav_producer(test_wav):
-    """Return a AudioProducer wired to a fresh engine and the test WAV file."""
+    """Return an AudioProducer wired to a fresh engine with a test WAV file."""
     engine = PulseForgeEngine()
-    return AudioProducer(engine, test_wav)
+    producer = AudioProducer(engine)
+    producer.file_path = test_wav
+    return producer
 
 
 def test_load_wav(wav_producer):

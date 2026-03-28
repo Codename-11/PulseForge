@@ -1,0 +1,13 @@
+{
+  "name": "pulseforge",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run textual run --dev main.py",
+    "console": "uv run textual console",
+    "start": "uv run python main.py",
+    "test": "uv run pytest -v",
+    "lint": "uv run ruff check .",
+    "lint:fix": "uv run ruff check . --fix"
+  }
+}
