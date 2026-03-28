@@ -1,4 +1,5 @@
 import asyncio
+import time
 import numpy as np
 from pathlib import Path
 from scipy.fft import rfft, rfftfreq
@@ -102,14 +103,17 @@ class AudioProducer:
         await self._run_frames(file_path)
 
     async def _run_frames(self, file_path: str):
-        """Stream SignalFrames from already-loaded samples."""
+        """Stream SignalFrames from already-loaded samples with drift-corrected timing."""
         self.engine.playing = True
         self.engine.current_file = file_path
 
         window_samples = int(self.sample_rate * self.WINDOW_MS / 1000)
         total_samples = len(self.samples)
+        window_sec = self.WINDOW_MS / 1000
         offset = 0
         timestamp = 0.0
+        start_time = time.monotonic()
+        frame_idx = 0
 
         try:
             while offset + window_samples <= total_samples:
@@ -129,8 +133,14 @@ class AudioProducer:
 
                 await self.engine.push_frame(frame)
 
-                await asyncio.sleep(self.WINDOW_MS / 1000)
+                # Drift-corrected sleep: target next frame time from start
+                frame_idx += 1
+                target_time = start_time + frame_idx * window_sec
+                sleep_time = target_time - time.monotonic()
+                if sleep_time > 0:
+                    await asyncio.sleep(sleep_time)
+
                 offset += window_samples
-                timestamp += self.WINDOW_MS / 1000
+                timestamp += window_sec
         finally:
             self.engine.playing = False
