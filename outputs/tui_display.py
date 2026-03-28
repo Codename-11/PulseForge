@@ -1,12 +1,14 @@
 import asyncio
 import time
+import threading
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Callable, List
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Footer, Static, Label, Input
+from textual.widgets import Footer, Static, Label
 from core.models import SignalFrame
 
 
@@ -149,17 +151,18 @@ class BottomStrip(Static):
         )
 
 
-class FilePrompt(Static):
-    """Overlay prompt for entering a file path."""
-
-    def __init__(self):
-        super().__init__()
-        self.visible = False
-
-    def render(self) -> str:
-        if self.visible:
-            return "  Enter file path below and press Enter:"
-        return ""
+def _open_file_dialog() -> str:
+    """Open a native Windows file picker. Runs in a thread to avoid blocking."""
+    from tkinter import Tk, filedialog
+    root = Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    file_path = filedialog.askopenfilename(
+        title="Open Audio File — PulseForge",
+        filetypes=[("Audio Files", "*.wav *.mp3"), ("WAV", "*.wav"), ("MP3", "*.mp3")],
+    )
+    root.destroy()
+    return file_path
 
 
 class PulseForgeTUI(App):
@@ -182,7 +185,6 @@ class PulseForgeTUI(App):
         self._paused = False
         self.on_file_load: Optional[Callable] = None
         self.on_pause_toggle: Optional[Callable] = None
-        self._file_input_visible = False
 
     def compose(self) -> ComposeResult:
         # Header bar
@@ -218,12 +220,6 @@ class PulseForgeTUI(App):
         # Bottom strip
         yield BottomStrip(id="bottom-strip")
 
-        # File input (hidden by default)
-        yield Input(
-            placeholder="Enter file path and press Enter...",
-            id="file-input",
-        )
-
         yield Footer()
 
     async def on_mount(self):
@@ -235,10 +231,6 @@ class PulseForgeTUI(App):
 
         # Start clock timer — update every second
         self.set_interval(1.0, self._tick_clock)
-
-        # Hide file input initially
-        file_input = self.query_one("#file-input", Input)
-        file_input.display = False
 
         # Update header with engine info
         self._update_header_filename()
@@ -353,24 +345,23 @@ class PulseForgeTUI(App):
             pass
 
     def action_open_file(self):
-        """Show file input prompt."""
-        try:
-            file_input = self.query_one("#file-input", Input)
-            file_input.display = not file_input.display
-            if file_input.display:
-                file_input.focus()
-                file_input.value = ""
-        except Exception:
-            pass
+        """Open native file picker in a background thread."""
+        def _pick():
+            file_path = _open_file_dialog()
+            if file_path:
+                # Schedule the async load back on the event loop
+                self.call_from_thread(self._handle_file_picked, file_path)
 
-    async def on_input_submitted(self, event: Input.Submitted):
-        """Handle file path submission."""
-        file_path = event.value.strip()
-        # Hide the input
-        file_input = self.query_one("#file-input", Input)
-        file_input.display = False
+        threading.Thread(target=_pick, daemon=True).start()
 
+    def _handle_file_picked(self, file_path: str):
+        """Called on the main thread after file picker returns."""
         if file_path and self.on_file_load:
+            asyncio.get_event_loop().create_task(self._do_file_load(file_path))
+
+    async def _do_file_load(self, file_path: str):
+        """Async file load handler."""
+        if self.on_file_load:
             await self.on_file_load(file_path)
             self._update_header_filename()
 

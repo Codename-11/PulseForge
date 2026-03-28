@@ -114,14 +114,6 @@ MonitorLine {
     border-top: solid $amber-dark;
 }
 
-/* ── File input ── */
-#file-input {
-    dock: bottom;
-    margin: 0 2;
-    background: #111111;
-    color: $amber;
-    border: round $amber;
-}
 
 /* ── Footer overrides ── */
 Footer {
