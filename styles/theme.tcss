@@ -120,3 +120,34 @@ Footer {
     background: #111111;
     color: $amber-dim;
 }
+
+/* ── Settings Panel ── */
+#settings-panel {
+    width: 28;
+    min-width: 24;
+    border: round $amber-dark;
+    padding: 1;
+    margin: 0;
+    background: #111111;
+    display: none;
+}
+
+#settings-panel.visible {
+    display: block;
+}
+
+.setting-row {
+    height: 1;
+    margin-bottom: 1;
+    color: $amber;
+}
+
+.setting-row.selected {
+    color: $amber-bright;
+    text-style: bold;
+}
+
+.setting-label {
+    color: $amber-dim;
+    height: 1;
+}

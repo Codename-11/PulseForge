@@ -21,6 +21,7 @@ class PulseForgeApp:
         # Wire the TUI's callbacks
         self.tui.on_file_load = self.load_file
         self.tui.on_pause_toggle = self._handle_pause
+        self.tui.on_settings_change = self._handle_setting
 
     async def load_file(self, file_path: str):
         """Load and play a new audio file."""
@@ -61,6 +62,17 @@ class PulseForgeApp:
             self.audio.pause()
         else:
             self.audio.resume()
+
+    def _handle_setting(self, key: str, value: float):
+        """Apply a setting change from the TUI to the backend."""
+        if key == "smoothing":
+            from core.engine import SMOOTHING_FACTOR
+            # Update the engine's smoothing factor directly
+            self.engine._smoothing_factor = value
+        elif key == "volume":
+            if self.audio._mixer_ready():
+                import pygame
+                pygame.mixer.music.set_volume(value)
 
     async def run(self, initial_file: str | None = None):
         """Start the persistent app."""

@@ -13,6 +13,7 @@ class PulseForgeEngine:
         self.playing: bool = False
         self.current_file: str = ""
         self._prev_bins: List[float] = []
+        self._smoothing_factor: float = SMOOTHING_FACTOR
 
     def add_subscriber(self, callback: Callable):
         """Registers an output module (TUI, Audio, Hardware)."""
@@ -40,7 +41,7 @@ class PulseForgeEngine:
         smoothed = []
         for i, val in enumerate(frame.fft_bins):
             prev = self._prev_bins[i] if i < len(self._prev_bins) else 0.0
-            s = SMOOTHING_FACTOR * val + (1 - SMOOTHING_FACTOR) * prev
+            s = self._smoothing_factor * val + (1 - self._smoothing_factor) * prev
             smoothed.append(s)
 
         self._prev_bins = smoothed

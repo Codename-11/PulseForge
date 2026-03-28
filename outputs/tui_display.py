@@ -20,11 +20,19 @@ PEAK_HOLD_TIME = 0.6
 PEAK_DECAY_RATE = 0.92
 RENDER_FPS = 30
 
+# Settings definitions: (key, label, min, max, step, format_func)
+SETTINGS_DEFS = [
+    ("decay_rate", "Decay Rate", 0.0, 1.0, 0.05, lambda v: f"{v:.2f}"),
+    ("peak_hold", "Peak Hold", 0.1, 2.0, 0.1, lambda v: f"{v:.1f}s"),
+    ("smoothing", "Smoothing", 0.0, 1.0, 0.05, lambda v: f"{v:.2f}"),
+    ("volume", "Volume", 0.0, 1.0, 0.05, lambda v: f"{int(v * 100)}%"),
+]
+
 
 class FrequencyBar(Static):
     """A single vertical frequency bar with gravity decay and peak-hold ghost."""
 
-    def __init__(self, label: str, freq_label: str, index: int):
+    def __init__(self, label: str, freq_label: str, index: int, app_settings: Optional[dict] = None):
         super().__init__()
         self.label = label
         self.freq_label = freq_label
@@ -34,6 +42,7 @@ class FrequencyBar(Static):
         self.peak = 0.0
         self.peak_time = 0.0
         self._dirty = False
+        self._app_settings = app_settings
 
     def set_target(self, val: float):
         """Set the target value — actual animation happens in tick()."""
@@ -47,17 +56,21 @@ class FrequencyBar(Static):
         self._dirty = False
         now = time.monotonic()
 
+        # Read decay/peak from app settings if available, else module constants
+        decay = self._app_settings["decay_rate"] if self._app_settings else DECAY_RATE
+        peak_hold = self._app_settings["peak_hold"] if self._app_settings else PEAK_HOLD_TIME
+
         # Gravity
         if self.target >= self.value:
             self.value = self.target
         else:
-            self.value = max(self.target, self.value * DECAY_RATE)
+            self.value = max(self.target, self.value * decay)
 
         # Peak-hold
         if self.target >= self.peak:
             self.peak = self.target
             self.peak_time = now
-        elif now - self.peak_time > PEAK_HOLD_TIME:
+        elif now - self.peak_time > peak_hold:
             self.peak *= PEAK_DECAY_RATE
 
         # Always mark dirty if value > 0 (gravity still decaying)
@@ -133,13 +146,82 @@ class HeaderBar(Static):
         self.refresh()
 
     def update_clock(self):
-        self.clock_text = datetime.now().strftime("%H:%M:%S")
+        tz = datetime.now().strftime("%Z")
+        if not tz:
+            tz = time.strftime("%Z")
+        if not tz:
+            tz = time.tzname[0] if time.tzname and time.tzname[0] else "UTC"
+        self.clock_text = datetime.now().strftime("%m-%d-%y  %I:%M:%S %p") + f"  {tz}"
         self.refresh()
 
     def render(self) -> str:
         title = "PULSEFORGE ENGINE v1.0"
-        clock = self.clock_text or datetime.now().strftime("%H:%M:%S")
+        if not self.clock_text:
+            tz = datetime.now().strftime("%Z")
+            if not tz:
+                tz = time.strftime("%Z")
+            if not tz:
+                tz = time.tzname[0] if time.tzname and time.tzname[0] else "UTC"
+            clock = datetime.now().strftime("%m-%d-%y  %I:%M:%S %p") + f"  {tz}"
+        else:
+            clock = self.clock_text
         return f" {title}    {self.filename:^30}    {clock} "
+
+
+class SettingsPanel(Static):
+    """Vertical settings panel with text sliders for tuning engine parameters."""
+
+    def __init__(self, settings: dict, **kwargs):
+        super().__init__(**kwargs)
+        self._settings = settings
+        self._selected = 0
+        self._dirty = True
+
+    def select_prev(self):
+        self._selected = max(0, self._selected - 1)
+        self._dirty = True
+        self.refresh()
+
+    def select_next(self):
+        self._selected = min(len(SETTINGS_DEFS) - 1, self._selected + 1)
+        self._dirty = True
+        self.refresh()
+
+    def adjust(self, direction: int) -> Optional[tuple[str, float]]:
+        """Adjust the selected setting. Returns (key, new_value) or None."""
+        key, _label, mn, mx, step, _fmt = SETTINGS_DEFS[self._selected]
+        old = self._settings[key]
+        new = max(mn, min(mx, old + direction * step))
+        # Round to avoid float drift
+        new = round(new, 4)
+        if new != old:
+            self._settings[key] = new
+            self._dirty = True
+            self.refresh()
+            return (key, new)
+        return None
+
+    def render(self) -> str:
+        lines = [
+            "── SETTINGS ──",
+            "",
+        ]
+        slider_width = 10
+        for i, (key, label, mn, mx, _step, fmt) in enumerate(SETTINGS_DEFS):
+            val = self._settings[key]
+            # Normalized position 0..1
+            norm = (val - mn) / (mx - mn) if mx > mn else 0.0
+            filled = int(norm * slider_width)
+            filled = max(0, min(slider_width, filled))
+            empty = slider_width - filled
+            bar = "█" * filled + "░" * empty
+
+            prefix = "▸ " if i == self._selected else "  "
+            lines.append(f"{prefix}{label}: [{bar}] {fmt(val)}")
+
+        lines.append("")
+        lines.append("  ↑↓ select  ←→ adjust  S close")
+        return "\n".join(lines)
 
 
 class BottomStrip(Static):
@@ -195,6 +277,11 @@ class PulseForgeTUI(App):
         Binding("q", "quit", "Quit", show=True),
         Binding("o", "open_file", "Open File", show=True),
         Binding("space", "toggle_pause", "Pause", show=True),
+        Binding("s", "toggle_settings", "Settings", show=True),
+        Binding("up", "settings_up", "Up", show=False),
+        Binding("down", "settings_down", "Down", show=False),
+        Binding("left", "settings_left", "Left", show=False),
+        Binding("right", "settings_right", "Right", show=False),
     ]
 
     def __init__(self, engine=None):
@@ -208,6 +295,16 @@ class PulseForgeTUI(App):
         self._paused = False
         self.on_file_load: Optional[Callable] = None
         self.on_pause_toggle: Optional[Callable] = None
+        self.on_settings_change: Optional[Callable] = None
+
+        self._settings = {
+            "decay_rate": 0.85,
+            "peak_hold": 0.6,
+            "smoothing": 0.3,
+            "volume": 1.0,
+        }
+
+        self._settings_open = False
 
         # Cached widget references — populated on mount
         self._w_header: Optional[HeaderBar] = None
@@ -217,6 +314,8 @@ class PulseForgeTUI(App):
         self._w_status: Optional[Label] = None
         self._w_bottom: Optional[BottomStrip] = None
         self._w_message: Optional[Label] = None
+        self._w_settings: Optional[SettingsPanel] = None
+        self._w_right_panel: Optional[Vertical] = None
 
     def compose(self) -> ComposeResult:
         yield HeaderBar(id="header-bar")
@@ -233,7 +332,7 @@ class PulseForgeTUI(App):
                 yield Label("── VISUALIZER ──", id="viz-title", classes="panel-title")
                 with Horizontal(id="visualizer-grid"):
                     for i, name in enumerate(BAND_LABELS):
-                        bar = FrequencyBar(name, FREQ_LABELS[i], i)
+                        bar = FrequencyBar(name, FREQ_LABELS[i], i, app_settings=self._settings)
                         self.bars.append(bar)
                         yield bar
                 yield Label("No file loaded — press O to open", id="center-message")
@@ -244,6 +343,8 @@ class PulseForgeTUI(App):
                     mon = MonitorLine(name, i)
                     self.monitors.append(mon)
                     yield mon
+
+            yield SettingsPanel(self._settings, id="settings-panel")
 
         yield BottomStrip(id="bottom-strip")
         yield Footer()
@@ -259,6 +360,11 @@ class PulseForgeTUI(App):
         self._w_status = self.query_one("#status-label", Label)
         self._w_bottom = self.query_one("#bottom-strip", BottomStrip)
         self._w_message = self.query_one("#center-message", Label)
+        self._w_settings = self.query_one("#settings-panel", SettingsPanel)
+        self._w_right_panel = self.query_one("#right-panel", Vertical)
+
+        # Settings panel hidden by default
+        self._w_settings.display = False
 
         # Register subscriber
         if self.engine is not None:
@@ -380,3 +486,35 @@ class PulseForgeTUI(App):
         if self._w_status:
             status = "PAUSED" if self._paused else "ACTIVE"
             self._w_status.update(f"STATUS: {status}")
+
+    def action_toggle_settings(self):
+        """Toggle the settings panel, swapping it with the right monitors panel."""
+        self._settings_open = not self._settings_open
+        if self._w_settings and self._w_right_panel:
+            self._w_settings.display = self._settings_open
+            self._w_right_panel.display = not self._settings_open
+
+    def action_settings_up(self):
+        if self._settings_open and self._w_settings:
+            self._w_settings.select_prev()
+
+    def action_settings_down(self):
+        if self._settings_open and self._w_settings:
+            self._w_settings.select_next()
+
+    def action_settings_left(self):
+        if self._settings_open and self._w_settings:
+            result = self._w_settings.adjust(-1)
+            if result:
+                self._fire_settings_change(*result)
+
+    def action_settings_right(self):
+        if self._settings_open and self._w_settings:
+            result = self._w_settings.adjust(1)
+            if result:
+                self._fire_settings_change(*result)
+
+    def _fire_settings_change(self, key: str, value: float):
+        """Notify callback and apply local effects for a setting change."""
+        if self.on_settings_change:
+            self.on_settings_change(key, value)
