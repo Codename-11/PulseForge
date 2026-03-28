@@ -12,6 +12,7 @@ class PulseForgeEngine:
         self.running = True
         self.playing: bool = False
         self.current_file: str = ""
+        self.total_duration: float = 0.0
         self._prev_bins: List[float] = []
         self._smoothing_factor: float = SMOOTHING_FACTOR
 
@@ -31,6 +32,7 @@ class PulseForgeEngine:
         self._prev_bins = []
         self.running = True
         self.playing = False
+        self.total_duration = 0.0
 
     def _smooth(self, frame: SignalFrame) -> SignalFrame:
         """Apply exponential moving average to FFT bins for smoother visuals."""

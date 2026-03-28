@@ -126,6 +126,7 @@ class AudioProducer:
         """
         self.engine.playing = True
         self.engine.current_file = file_path
+        self.engine.total_duration = len(self.samples) / self.sample_rate
         self._running_max = 0.0
 
         window_samples = int(self.sample_rate * self.WINDOW_MS / 1000)
@@ -153,6 +154,7 @@ class AudioProducer:
                     fft_bins=bins,
                     metadata={
                         "file": Path(self.file_path).name,
+                        "format": Path(self.file_path).suffix.lstrip(".").upper(),
                         "sample_rate": self.sample_rate,
                         "progress": offset / total_samples,
                     },

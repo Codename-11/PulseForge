@@ -1,25 +1,50 @@
+/* ── PulseForge Theme ── */
+/* Multi-screen TUI: Visualizer, Settings, Help */
+
+/* ── Color Variables ── */
 $amber: #FFB000;
 $amber-dim: #8A6200;
 $amber-dark: #221100;
 $amber-bright: #FFCC00;
 $bg: #0A0A0A;
+$panel-bg: #111111;
+
+/* ══════════════════════════════════════════════
+   Global
+   ══════════════════════════════════════════════ */
 
 Screen {
     background: $bg;
     color: $amber;
 }
 
-/* ── Custom Header Bar ── */
+/* ── Header Bar (shared across screens) ── */
 #header-bar {
     dock: top;
     height: 1;
-    background: #111111;
+    background: $panel-bg;
     color: $amber;
     text-style: bold;
     padding: 0 1;
 }
 
-/* ── Main three-column layout ── */
+/* ── Footer (shared across screens) ── */
+Footer {
+    background: $panel-bg;
+    color: $amber-dim;
+}
+
+/* ── Panel Titles & Dividers ── */
+.panel-title {
+    text-style: bold;
+    color: $amber-dim;
+    margin-bottom: 1;
+}
+
+/* ══════════════════════════════════════════════
+   Visualizer Screen — Main Layout
+   ══════════════════════════════════════════════ */
+
 #main-container {
     layout: horizontal;
     height: 1fr;
@@ -30,31 +55,29 @@ Screen {
     border: round $amber-dark;
     padding: 1;
     margin: 0;
-    background: #111111;
+    background: $panel-bg;
 }
 
-.panel-title {
-    text-style: bold;
-    color: $amber-dim;
-    margin-bottom: 1;
-}
-
-/* ── Left panel ── */
+/* ── Left Panel ── */
 #left-panel {
-    width: 24;
-    min-width: 20;
+    width: 26;
+    min-width: 22;
 }
 
-#peak-label, #rms-label, #flow-label {
+#peak-label, #rms-label, #flow-label, #fps-label {
     margin-bottom: 0;
 }
 
-#status-label {
-    margin-top: 1;
-    text-style: bold;
+#spacer-1, #spacer-2 {
+    height: 1;
 }
 
-/* ── Center panel ── */
+#status-label {
+    text-style: bold;
+    margin-top: 1;
+}
+
+/* ── Center Panel ── */
 #center-panel {
     width: 1fr;
     border: round $amber-dark;
@@ -76,7 +99,6 @@ Screen {
     width: 100%;
 }
 
-/* ── Visualizer grid: 8 bars side by side ── */
 #visualizer-grid {
     height: 1fr;
     align-horizontal: center;
@@ -91,10 +113,10 @@ FrequencyBar {
     color: $amber;
 }
 
-/* ── Right panel ── */
+/* ── Right Panel ── */
 #right-panel {
-    width: 28;
-    min-width: 24;
+    width: 34;
+    min-width: 30;
 }
 
 MonitorLine {
@@ -103,51 +125,80 @@ MonitorLine {
     color: $amber;
 }
 
-/* ── Bottom strip ── */
-#bottom-strip {
+/* ── Progress Strip ── */
+#progress-strip {
     dock: bottom;
     height: 1;
-    background: #111111;
+    background: $panel-bg;
     color: $amber;
     text-style: bold;
     padding: 0 1;
     border-top: solid $amber-dark;
 }
 
+/* ══════════════════════════════════════════════
+   Settings Screen
+   ══════════════════════════════════════════════ */
 
-/* ── Footer overrides ── */
-Footer {
-    background: #111111;
-    color: $amber-dim;
+#settings-content {
+    align: center middle;
+    width: 100%;
+    height: 1fr;
+    padding: 2 4;
 }
 
-/* ── Settings Panel ── */
-#settings-panel {
-    width: 28;
-    min-width: 24;
-    border: round $amber-dark;
-    padding: 1;
-    margin: 0;
-    background: #111111;
-    display: none;
-}
-
-#settings-panel.visible {
-    display: block;
-}
-
-.setting-row {
-    height: 1;
-    margin-bottom: 1;
+#settings-display {
+    width: auto;
+    height: auto;
+    content-align: center middle;
     color: $amber;
+    padding: 2 4;
 }
 
-.setting-row.selected {
-    color: $amber-bright;
+/* ══════════════════════════════════════════════
+   Help Screen
+   ══════════════════════════════════════════════ */
+
+#help-content {
+    align: center middle;
+    width: 100%;
+    height: 1fr;
+    padding: 2 4;
+}
+
+#help-display {
+    width: auto;
+    height: auto;
+    content-align: center middle;
+    color: $amber;
+    padding: 2 4;
+}
+
+/* ══════════════════════════════════════════════
+   File Browser Screen
+   ══════════════════════════════════════════════ */
+
+#browser-container {
+    width: 100%;
+    height: 1fr;
+    padding: 1 2;
+}
+
+#browser-path {
     text-style: bold;
+    color: $amber-dim;
+    margin-bottom: 1;
+    height: 1;
 }
 
-.setting-label {
-    color: $amber-dim;
-    height: 1;
+#browser-scroll {
+    height: 1fr;
+    border: round $amber-dark;
+    background: $panel-bg;
+    padding: 1;
+}
+
+#browser-list {
+    width: 100%;
+    color: $amber;
 }

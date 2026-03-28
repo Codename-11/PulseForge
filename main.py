@@ -22,6 +22,7 @@ class PulseForgeApp:
         self.tui.on_file_load = self.load_file
         self.tui.on_pause_toggle = self._handle_pause
         self.tui.on_settings_change = self._handle_setting
+        self.tui.on_restart = self._handle_restart
 
     async def load_file(self, file_path: str):
         """Load and play a new audio file."""
@@ -73,6 +74,11 @@ class PulseForgeApp:
             if self.audio._mixer_ready():
                 import pygame
                 pygame.mixer.music.set_volume(value)
+
+    async def _handle_restart(self):
+        """Restart the current track from the beginning."""
+        if self.engine.current_file:
+            await self.load_file(self.engine.current_file)
 
     async def run(self, initial_file: str | None = None):
         """Start the persistent app."""
