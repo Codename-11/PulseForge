@@ -1,0 +1,4 @@
+textual
+numpy
+scipy
+pygame

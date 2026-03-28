@@ -1,0 +1,42 @@
+$amber: #FFB000;
+$amber-dim: #8A6200;
+$amber-dark: #221100;
+$bg: #0A0A0A;
+
+Screen {
+    background: $bg;
+    color: $amber;
+    font-family: "Courier New", monospace;
+}
+
+#main-container {
+    layout: grid;
+    grid-size: 3 1;
+    grid-columns: 1fr 3fr 1fr;
+}
+
+.side-panel {
+    border: rect $amber-dark;
+    padding: 1;
+    margin: 1;
+    background: #111111;
+}
+
+#visualizer-grid {
+    grid-size: 8 1;
+    padding: 1;
+    border: rect $amber-dark;
+    height: 100%;
+}
+
+FrequencyBar {
+    width: 100%;
+    height: 100%;
+    content-align: center bottom;
+}
+
+.monitor-line {
+    height: 3;
+    border-bottom: thin $amber-dark;
+    margin-bottom: 1;
+}
