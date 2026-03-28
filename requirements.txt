@@ -1,4 +1,0 @@
-textual
-numpy
-scipy
-pygame

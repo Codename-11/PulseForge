@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Quick dev launcher — no rebuild needed
+# Usage: ./dev <audio_file>
+#        ./dev tests/fixtures/test_tone.wav
+uv run python main.py "$@"

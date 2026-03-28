@@ -6,7 +6,6 @@ $bg: #0A0A0A;
 Screen {
     background: $bg;
     color: $amber;
-    font-family: "Courier New", monospace;
 }
 
 #main-container {
@@ -16,16 +15,21 @@ Screen {
 }
 
 .side-panel {
-    border: rect $amber-dark;
+    border: round $amber-dark;
     padding: 1;
     margin: 1;
     background: #111111;
 }
 
+.panel-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
 #visualizer-grid {
     grid-size: 8 1;
     padding: 1;
-    border: rect $amber-dark;
+    border: round $amber-dark;
     height: 100%;
 }
 
@@ -35,8 +39,22 @@ FrequencyBar {
     content-align: center bottom;
 }
 
-.monitor-line {
-    height: 3;
-    border-bottom: thin $amber-dark;
+MonitorLine {
+    height: 2;
     margin-bottom: 1;
+}
+
+ProgressBar {
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+ProgressBar Bar {
+    color: $amber;
+    background: $amber-dark;
+}
+
+#status-label {
+    margin-top: 1;
+    text-style: bold;
 }
