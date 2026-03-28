@@ -11,6 +11,10 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Static, Label
 from core.models import SignalFrame
+from outputs.visualizers import (
+    BarsVisualizer, WaveformVisualizer, SpectrogramVisualizer,
+    IsometricVisualizer, RetrowaveVisualizer, WaterfallVisualizer,
+)
 
 
 # ── Shared Constants ──
@@ -28,6 +32,15 @@ SETTINGS_DEFS = [
     ("peak_hold", "Peak Hold", 0.1, 2.0, 0.1, lambda v: f"{v:.1f}s"),
     ("smoothing", "Smoothing", 0.0, 1.0, 0.05, lambda v: f"{v:.2f}"),
     ("volume", "Volume", 0.0, 1.0, 0.05, lambda v: f"{int(v * 100)}%"),
+]
+
+VIZ_MODES = [
+    ("1", "Bars", BarsVisualizer),
+    ("2", "Waveform", WaveformVisualizer),
+    ("3", "Spectrogram", SpectrogramVisualizer),
+    ("4", "Isometric", IsometricVisualizer),
+    ("5", "Retrowave", RetrowaveVisualizer),
+    ("6", "Waterfall", WaterfallVisualizer),
 ]
 
 
@@ -79,76 +92,6 @@ class HeaderBar(Static):
         else:
             clock = self.clock_text
         return f" {title}  {view}    {self.filename}    {fps_text}    {clock} "
-
-
-class FrequencyBar(Static):
-    """A single vertical frequency bar with gravity decay and peak-hold ghost."""
-
-    def __init__(self, label: str, freq_label: str, index: int, app_settings: Optional[dict] = None):
-        super().__init__()
-        self.label = label
-        self.freq_label = freq_label
-        self.index = index
-        self.value = 0.0
-        self.target = 0.0
-        self.peak = 0.0
-        self.peak_time = 0.0
-        self._dirty = False
-        self._app_settings = app_settings
-
-    def set_target(self, val: float):
-        self.target = val
-        self._dirty = True
-
-    def tick(self):
-        if not self._dirty:
-            return
-        self._dirty = False
-        now = time.monotonic()
-
-        decay = self._app_settings["decay_rate"] if self._app_settings else DECAY_RATE
-        peak_hold = self._app_settings["peak_hold"] if self._app_settings else PEAK_HOLD_TIME
-
-        if self.target >= self.value:
-            self.value = self.target
-        else:
-            self.value = max(self.target, self.value * decay)
-
-        if self.target >= self.peak:
-            self.peak = self.target
-            self.peak_time = now
-        elif now - self.peak_time > peak_hold:
-            self.peak *= PEAK_DECAY_RATE
-
-        if self.value > 0.01:
-            self._dirty = True
-
-        self.refresh()
-
-    def render(self) -> str:
-        max_height = 14
-        filled = int(self.value * max_height)
-        filled = max(0, min(max_height, filled))
-        peak_pos = int(self.peak * max_height)
-        peak_pos = max(0, min(max_height, peak_pos))
-
-        bar_width = 4
-        lines = []
-        for row in range(max_height, 0, -1):
-            if row <= filled:
-                # Gradient: bottom rows dim, middle/top bright
-                if row <= max_height // 3:
-                    lines.append("▓" * bar_width)
-                else:
-                    lines.append("█" * bar_width)
-            elif row == peak_pos and peak_pos > filled:
-                lines.append("━" * bar_width)
-            else:
-                lines.append(" " * bar_width)
-
-        lines.append(f" {self.freq_label:^{bar_width}} ")
-        lines.append(f" {self.label:^{bar_width}} ")
-        return "\n".join(lines)
 
 
 class MonitorLine(Static):
@@ -388,12 +331,19 @@ class VisualizerScreen(Screen):
         Binding("s", "push_settings", "Settings", show=True),
         Binding("h", "push_help", "Help", show=True),
         Binding("r", "restart", "Restart", show=True),
+        Binding("1", "viz_1", "Bars", show=False),
+        Binding("2", "viz_2", "Wave", show=False),
+        Binding("3", "viz_3", "Spec", show=False),
+        Binding("4", "viz_4", "Iso", show=False),
+        Binding("5", "viz_5", "Retro", show=False),
+        Binding("6", "viz_6", "Fall", show=False),
     ]
 
     def __init__(self):
         super().__init__()
-        self.bars: list[FrequencyBar] = []
         self.monitors: list[MonitorLine] = []
+        self._active_viz = None
+        self._viz_index = 0
         self._frame_count = 0
         self._start_time = 0.0
         self._last_frame: Optional[SignalFrame] = None
@@ -430,12 +380,8 @@ class VisualizerScreen(Screen):
                 yield Label("STATUS: IDLE", id="status-label")
 
             with Vertical(id="center-panel"):
-                yield Label("── VISUALIZER ──", id="viz-title", classes="panel-title")
-                with Horizontal(id="visualizer-grid"):
-                    for i, name in enumerate(BAND_LABELS):
-                        bar = FrequencyBar(name, FREQ_LABELS[i], i, app_settings=self.app._settings)
-                        self.bars.append(bar)
-                        yield bar
+                yield Label("── 1:BARS  2:WAVE  3:SPEC  4:ISO  5:RETRO  6:FALL ──", id="viz-title", classes="panel-title")
+                yield BarsVisualizer(id="active-viz")
                 yield Label("No file loaded — press O to open", id="center-message")
 
             with Vertical(id="right-panel", classes="side-panel"):
@@ -464,7 +410,10 @@ class VisualizerScreen(Screen):
         self._w_progress = self.query_one("#progress-strip", ProgressStrip)
         self._w_message = self.query_one("#center-message", Label)
 
-        self._w_header.set_view("VISUALIZER")
+        self._active_viz = self.query_one("#active-viz")
+        self._viz_index = 0
+
+        self._w_header.set_view("VISUALIZER — BARS")
 
         # Register engine subscriber
         if self.app.engine is not None:
@@ -479,8 +428,8 @@ class VisualizerScreen(Screen):
         self._update_header_filename()
 
     def _render_tick(self):
-        for bar in self.bars:
-            bar.tick()
+        if self._active_viz:
+            self._active_viz.tick()
         for mon in self.monitors:
             mon.tick()
         if self._w_progress:
@@ -526,6 +475,29 @@ class VisualizerScreen(Screen):
         self._w_status.update(f"STATUS: {status}")
         self._update_header_filename()
 
+    def _switch_viz(self, index: int):
+        """Switch to visualization mode by index (0-5)."""
+        _, name, viz_class = VIZ_MODES[index]
+        # Remove old viz
+        old = self.query_one("#active-viz")
+        old.remove()
+        # Mount new viz
+        center = self.query_one("#center-panel", Vertical)
+        new_viz = viz_class(id="active-viz")
+        center.mount(new_viz, before=self.query_one("#center-message", Label))
+        self._active_viz = new_viz
+        # Update header
+        if self._w_header:
+            self._w_header.set_view(f"VISUALIZER — {name.upper()}")
+        self._viz_index = index
+
+    def action_viz_1(self): self._switch_viz(0)
+    def action_viz_2(self): self._switch_viz(1)
+    def action_viz_3(self): self._switch_viz(2)
+    def action_viz_4(self): self._switch_viz(3)
+    def action_viz_5(self): self._switch_viz(4)
+    def action_viz_6(self): self._switch_viz(5)
+
     async def update_ui(self, frame: SignalFrame):
         """Subscriber callback — stores data, actual render happens on timer."""
         if self.app._paused:
@@ -541,10 +513,11 @@ class VisualizerScreen(Screen):
         elapsed_wall = time.monotonic() - self._start_time
         fps = int(self._frame_count / elapsed_wall) if elapsed_wall > 0 else 0
 
-        # Push data to bars and monitors
+        # Push data to active visualizer and monitors
+        if self._active_viz:
+            self._active_viz.set_frame(frame.fft_bins, frame.peak_amplitude, frame.timestamp)
+
         for i, val in enumerate(frame.fft_bins):
-            if i < len(self.bars):
-                self.bars[i].set_target(val)
             if i < len(self.monitors):
                 self.monitors[i].push(val)
 
@@ -753,6 +726,10 @@ class HelpScreen(Screen):
             "S          Settings",
             "H          Help (this screen)",
             "Q          Quit",
+            "",
+            "1-6        Switch visualization mode",
+            "           1:Bars  2:Waveform  3:Spectrogram",
+            "           4:Isometric  5:Retrowave  6:Waterfall",
             "",
             "── ABOUT ──",
             "",

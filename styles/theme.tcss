@@ -89,6 +89,8 @@ Footer {
 #viz-title {
     text-align: center;
     dock: top;
+    color: $amber-dim;
+    height: 1;
 }
 
 #center-message {
@@ -99,18 +101,12 @@ Footer {
     width: 100%;
 }
 
-#visualizer-grid {
+#active-viz {
+    width: 100%;
     height: 1fr;
-    align-horizontal: center;
-    padding: 0 1;
-}
-
-FrequencyBar {
-    width: 1fr;
-    height: 100%;
-    content-align: center bottom;
-    margin: 0 1;
+    content-align: center middle;
     color: $amber;
+    padding: 0 1;
 }
 
 /* ── Right Panel ── */
